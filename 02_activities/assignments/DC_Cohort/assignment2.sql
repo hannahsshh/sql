@@ -20,7 +20,9 @@ The `||` values concatenate the columns into strings.
 Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. 
 All the other rows will remain the same.) */
 
-
+SELECT 
+product_name || ', ' || COALESCE(product_size, '')|| ' (' || COALESCE(product_qty_type, 'unit') || ')'
+FROM product;
 
 --Windowed Functions
 /* 1. Write a query that selects from the customer_purchases table and numbers each customer’s  
@@ -33,17 +35,72 @@ each new market date for each customer, or select only the unique market dates p
 HINT: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK(). */
 
 
+SELECT 
+	customer_id
+	,market_date
+	,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY market_date) as visit_number
+
+FROM 
+	(SELECT DISTINCT 
+		customer_id
+		,market_date
+		FROM customer_purchases
+		) ;
+
 
 /* 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, 
 then write another query that uses this one as a subquery (or temp table) and filters the results to 
 only the customer’s most recent visit. */
 
+/*FIRST query */
+SELECT 
+	customer_id
+	,market_date
+	,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY market_date DESC) as visit_number
 
+FROM 
+	(SELECT DISTINCT 
+		customer_id
+		,market_date
+		FROM customer_purchases
+		) ;
 
+/*SECOND query */
+
+SELECT 
+	customer_id
+	,market_date as most_recent_market_date
+
+FROM	
+	(SELECT 
+		customer_id
+		,market_date 
+		,ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY market_date DESC) as visit_number
+
+	FROM 
+		(SELECT DISTINCT 
+			customer_id
+			,market_date
+			FROM customer_purchases)
+	) 
+
+WHERE visit_number=1 ;
+		
+		
 /* 3. Using a COUNT() window function, include a value along with each row of the 
 customer_purchases table that indicates how many different times that customer has purchased that product_id. */
 
-
+SELECT 
+	product_id
+	,vendor_id
+	,market_date
+	,customer_id
+	,quantity
+	,cost_to_customer_per_qty
+	,transaction_time
+	,COUNT(*) OVER (PARTITION BY customer_id, product_id) as product_purchase_count_by_customer
+FROM customer_purchases;
+	
 
 -- String manipulations
 /* 1. Some product names in the product table have descriptions like "Jar" or "Organic". 
@@ -58,10 +115,37 @@ Remove any trailing or leading whitespaces. Don't just use a case statement for 
 Hint: you might need to use INSTR(product_name,'-') to find the hyphens. INSTR will help split the column. */
 
 
+SELECT
+product_id
+,product_name
+,product_size
+,product_category_id
+,product_qty_type
+
+	,CASE WHEN INSTR(product_name, '-') > 0 THEN TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1))
+		ELSE NULL
+		END AS description
+		
+FROM product;
+
+
 
 /* 2. Filter the query to show any product_size value that contain a number with REGEXP. */
 
+SELECT
+product_id
+,product_name
+,product_size
+,product_category_id
+,product_qty_type
 
+	,CASE WHEN INSTR(product_name, '-') > 0 THEN TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1))
+		ELSE NULL
+		END AS description
+		
+FROM product
+
+WHERE product_size REGEXP '[0-9]';
 
 -- UNION
 /* 1. Using a UNION, write a query that displays the market dates with the highest and lowest total sales.
@@ -73,9 +157,51 @@ HINT: There are a possibly a few ways to do this query, but if you're struggling
 3) Query the second temp table twice, once for the best day, once for the worst day, 
 with a UNION binding them. */
 
+/* Temp table to sum all the sales by individual market dates */
+DROP TABLE IF EXISTS temp.sales_by_date;
+CREATE TABLE temp.sales_by_date AS
+	SELECT
+	market_date
+	,SUM(quantity * cost_to_customer_per_qty) as total_sales_per_day
+	
+	FROM customer_purchases
+	GROUP BY market_date;
 
+/* Temp table to rank the total sales highest to lowest */
+DROP TABLE IF EXISTS temp.ranked_sales_per_day;
+CREATE TABLE temp.ranked_sales_per_day AS
+		SELECT
+		market_date
+		,total_sales_per_day
+		,RANK() OVER (ORDER BY total_sales_per_day DESC) as ranked
+	
+	FROM temp.sales_by_date;
 
+/* Get the best and worst day of sales */
+SELECT
+		market_date
+		,total_sales_per_day as sales
+		,'Best Day' as label
+FROM temp.sales_by_date
+WHERE total_sales_per_day = (
+		SELECT
+		MAX(total_sales_per_day) 
+		FROM temp.sales_by_date)
 
+UNION
+
+SELECT
+		market_date
+		,total_sales_per_day as sales
+		,'Worst Day' as label
+FROM temp.sales_by_date
+WHERE total_sales_per_day = (
+		SELECT
+		MIN(total_sales_per_day)
+		FROM temp.sales_by_date);
+		
+		
+	
 /* SECTION 3 */
 
 -- Cross Join
