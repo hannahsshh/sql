@@ -55,7 +55,14 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 
 ```
 Your answer...
-```
+
+In either case, the CUSTOMER_ADDRESS table would contain columns: customer_id, street_address, city, state, postal_code, country. For two alternative architectures:
+- Architecture 1: add columns address_id, is_current
+- Architecture 2: no additional columns added
+
+In this case, Architecture 1 can retain changes. A customer_id can be linked to multiple addresses, and the column of is_currect allows the store to provide a Boolean that indicates the address in use. Architecture 1 is Type 2. 
+Architecture 2 would overwrite the existing address as a customer_id may only be associated with a single address. This is Type 1.
+
 
 ***
 
