@@ -21,7 +21,7 @@ Edit the appropriate columns -- you're making two edits -- and the NULL rows wil
 All the other rows will remain the same.) */
 
 SELECT 
-product_name || ', ' || COALESCE(product_size, '')|| ' (' || COALESCE(product_qty_type, 'unit') || ')'
+product_name || ', ' || COALESCE(product_size, '')|| ' (' || COALESCE(product_qty_type, 'unit') || ')' as product_list
 FROM product;
 
 --Windowed Functions
@@ -223,18 +223,30 @@ This table will contain only products where the `product_qty_type = 'unit'`.
 It should use all of the columns from the product table, as well as a new column for the `CURRENT_TIMESTAMP`.  
 Name the timestamp column `snapshot_timestamp`. */
 
-
+CREATE TABLE product_units as
+	SELECT 
+		p.*
+		,CURRENT_TIMESTAMP as snapshot_timestamp
+	FROM product as p
+WHERE product_qty_type = 'unit';
 
 /*2. Using `INSERT`, add a new row to the product_units table (with an updated timestamp). 
 This can be any product you desire (e.g. add another record for Apple Pie). */
 
-
+INSERT INTO product_units (product_id, product_name, product_size, product_category_id, product_qty_type, snapshot_timestamp)
+VALUES (24, 'Blueberry Pie', '10"', 3, 'unit', CURRENT_TIMESTAMP);
 
 -- DELETE
 /* 1. Delete the older record for the whatever product you added. 
 
 HINT: If you don't specify a WHERE clause, you are going to have a bad time.*/
 
+DELETE FROM product_units
+	WHERE product_name = 'Blueberry Pie'
+	AND snapshot_timestamp < (
+			SELECT MAX(snapshot_timestamp)
+			FROM product_units
+			WHERE product_name = 'Blueberry Pie' );
 
 
 -- UPDATE
