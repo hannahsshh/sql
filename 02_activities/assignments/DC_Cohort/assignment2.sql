@@ -286,6 +286,43 @@ Finally, make sure you have a WHERE statement to update the right row,
 	you'll need to use product_units.product_id to refer to the correct row within the product_units table. 
 When you have all of these components, you can run the update statement. */
 
+ALTER TABLE product_units
+ADD current_quantity INT;
+
+/* find the last quantity per product by finding the most recent market_date for each product and the associated quantity*/	
+
+SELECT 
+	product_id
+	,quantity
+	,market_date
+FROM (
+		SELECT
+			product_id
+			,quantity
+			,market_date
+			,ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY market_date DESC) AS ranked_market_dates
+		FROM vendor_inventory) as ranked_vi
+	WHERE ranked_market_dates = 1;
+	
+
+WITH ranked_vi AS (
+	SELECT 
+		product_id
+		,quantity
+		,ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY market_date DESC) AS ranked_market_dates
+	FROM vendor_inventory) 
+UPDATE product_units AS pu
+SET current_quantity = coalesce(ranked_vi.quantity, 0)
+FROM ranked_vi
+WHERE pu.product_id = ranked_vi.product_id
+	AND ranked_vi.ranked_market_dates = 1;
 
 
 
+
+
+
+
+	
+	
+	
