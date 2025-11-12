@@ -216,6 +216,26 @@ How many customers are there (y).
 Before your final group by you should have the product of those two queries (x*y).  */
 
 
+SELECT
+	v.vendor_name
+	,p.product_name
+	,(vi.original_price * 5 * c.customer_count) AS total_revenue
+FROM
+	(SELECT DISTINCT 
+		vendor_id, product_id, original_price
+		FROM vendor_inventory) AS vi
+
+JOIN vendor AS v
+	ON vi.vendor_id = v.vendor_id
+JOIN product AS p
+	ON vi.product_id = p.product_id
+
+CROSS JOIN 
+	(SELECT COUNT(*) AS customer_count 
+		FROM customer) AS c
+
+ORDER BY v.vendor_name, p.product_name;
+
 
 -- INSERT
 /*1.  Create a new table "product_units". 
